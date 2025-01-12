@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Curador</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+    header {
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      padding: 1rem;
+    }
+    main {
+      padding: 1rem;
+    }
+    #preview-container {
+      border: 1px solid #ccc;
+      margin-top: 1rem;
+      max-width: 600px;
+      height: auto;
+      overflow: hidden;
+      position: relative;
+    }
+    img, video {
+      max-width: 100%;
+      transform-origin: center center;
+      transition: transform 0.3s ease;
+    }
+    #tools button, #actions button {
+      margin: 5px;
+      padding: 10px;
+    }
+
+    /* General Styles for iframe */
+iframe {
+  width: 100%; /* Asegura que ocupe todo el ancho disponible */
+  height: 500px; /* Altura predeterminada */
+  border: none; /* Sin borde para un diseño limpio */
+  border-radius: 8px; /* Bordes redondeados para estética */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Sombra sutil para darle profundidad */
+  overflow: hidden; /* Evita desbordamientos */
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  iframe {
+    height: 400px; /* Reduce la altura en dispositivos más pequeños */
+  }
+}
+
+@media (max-width: 480px) {
+  iframe {
+    height: 300px; /* Ajusta aún más la altura para móviles */
+  }
+}
+
+/* Wrapper for better alignment */
+.iframe-wrapper {
+  position: relative;
+  overflow: hidden;
+  padding-top: 56.25%; /* Relación de aspecto 16:9 */
+  margin-bottom: 20px; /* Espaciado inferior */
+}
+
+.iframe-wrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Panel de Curador</h1>
+       <!-- Sección del perfil -->
+       <section id="profile-section">
+        <div class="profile-card">
+          <h2>👤 Perfil del Curador</h2>
+          <div class="profile-info">
+            <p><strong>Nombre:</strong> <span id="curator-name">Cargando...</span></p>
+            <p><strong>Correo:</strong> <span id="curator-email">Cargando...</span></p>
+            <p><strong>Fecha de Registro:</strong> <span id="curator-registered">Cargando...</span></p>
+            <p><strong>Tareas Completadas:</strong> <span id="curator-tasks">Cargando...</span></p>
+            <p><strong>Revisiones Realizadas:</strong> <span id="curator-reviews">Cargando...</span></p>
+            <p><strong>Aprobaciones Realizadas:</strong> <span id="curator-approvals">Cargando...</span></p>
+          </div>
+          <div class="profile-actions">
+            <button onclick="logout()">Cerrar Sesión</button>
+          </div>
+        </div>
+      </section>
+  </header>
+  <main>
+    <section id="curator-section">
+      <h2>Revisión de Contenido</h2>
+      <!-- Lista de archivos pendientes -->
+      <div id="pending-list"></div>
+    
+      <!-- Vista previa y herramientas -->
+      <div id="preview-section" style="display: none;">
+        <h3>Vista Previa</h3>
+        <div id="preview-container">
+          <img id="preview-image" src="" alt="Vista previa de imagen" style="display: none; max-width: 100%; max-height: 400px;">
+          <video id="preview-video" controls style="display: none; max-width: 100%; max-height: 400px;"></video>
+          <iframe id="preview-doc" src="" style="display: none; width: 100%; height: 400px;" frameborder="0"></iframe>
+        </div>
+    
+        <!-- Herramientas de transformación -->
+        <div id="tools" style="margin-top: 10px;">
+          <button id="zoom-in-btn">Zoom In</button>
+          <button id="zoom-out-btn">Zoom Out</button>
+          <button id="reset-zoom-btn">Restablecer Zoom</button>
+          <button id="rotate-left-btn">Rotar Izquierda</button>
+          <button id="rotate-right-btn">Rotar Derecha</button>
+        </div>
+    
+        <!-- Selección de categoría -->
+        <div id="category-selection" style="margin-top: 20px;">
+          <h4>Selecciona una categoría:</h4>
+          <label><input type="radio" name="databaseType" value="imágenes" /> Imágenes</label>
+          <label><input type="radio" name="databaseType" value="videos" /> Videos</label>
+          <label><input type="radio" name="databaseType" value="vectores" /> Vectores</label>
+          <label><input type="radio" name="databaseType" value="ilustraciones" /> Ilustraciones</label>
+        </div>
+    
+        <!-- Acciones de aprobación o rechazo -->
+        <div id="actions" style="margin-top: 20px;">
+          <button id="approve-btn" style="background: green; color: white;">Aprobar</button>
+          <button id="reject-btn" style="background: red; color: white;">Rechazar</button>
+        </div>
+      </div>
+    </section>
+    
+  </main>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getFirestore, doc, getDocs, getDoc, deleteDoc, setDoc, collection } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+  
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6QY7k3j0PRoWMxSNVk-2nI7sTqReGvlc",
+      authDomain: "scortsprincess.firebaseapp.com",
+      projectId: "scortsprincess",
+      storageBucket: "scortsprincess.appspot.com",
+      messagingSenderId: "599517218900",
+      appId: "1:599517218900:web:c51b2ec00e8c7b1fcd45c1",
+    };
+  
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+  
+    let currentZoom = 1;
+    let rotation = 0;
+    let currentFileId = null;
+  
+    // Carga los archivos pendientes para revisión
+    async function loadPendingUploads() {
+      const pendingList = document.getElementById('pending-list');
+      pendingList.innerHTML = ''; // Limpiar lista
+      const snapshot = await getDocs(collection(db, 'pendingUploads'));
+  
+      if (snapshot.empty) {
+        pendingList.innerHTML = '<p>No hay archivos pendientes de revisión.</p>';
+        return;
+      }
+  
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const fileName = data.fileName || "Archivo sin nombre";
+        const fileUrl = data.fileUrl || "#";
+  
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <p>${fileName}</p>
+          <button onclick="previewFile('${doc.id}', '${fileUrl}', '${data.fileType}')">Revisar</button>
+        `;
+        pendingList.appendChild(div);
+      });
+    }
+  
+    // Vista previa del archivo seleccionado
+    window.previewFile = function (id, fileUrl, fileType) {
+      currentFileId = id;
+      const img = document.getElementById('preview-image');
+      const vid = document.getElementById('preview-video');
+      const docFrame = document.getElementById('preview-doc');
+  
+      // Ocultar todos los elementos
+      img.style.display = 'none';
+      vid.style.display = 'none';
+      docFrame.style.display = 'none';
+  
+      // Mostrar el archivo según el tipo
+      if (fileType === 'Imagen') {
+        img.src = fileUrl;
+        img.style.display = 'block';
+      } else if (fileType === 'Video') {
+        vid.src = fileUrl;
+        vid.style.display = 'block';
+      } else {
+        docFrame.src = fileUrl;
+        docFrame.style.display = 'block';
+      }
+  
+      // Restablecer transformaciones
+      currentZoom = 1;
+      rotation = 0;
+      applyTransform();
+      document.getElementById('preview-section').style.display = 'block';
+    };
+  
+    // Aplicar transformaciones (zoom y rotación)
+    function applyTransform() {
+      const img = document.getElementById('preview-image');
+      const vid = document.getElementById('preview-video');
+      const docFrame = document.getElementById('preview-doc');
+      const element = img.style.display === 'block' ? img : vid.style.display === 'block' ? vid : docFrame;
+      element.style.transform = `scale(${currentZoom}) rotate(${rotation}deg)`;
+    }
+  
+    // Control de botones de zoom y rotación
+    document.getElementById('zoom-in-btn').addEventListener('click', () => {
+      currentZoom += 0.2;
+      applyTransform();
+    });
+  
+    document.getElementById('zoom-out-btn').addEventListener('click', () => {
+      if (currentZoom > 0.4) currentZoom -= 0.2;
+      applyTransform();
+    });
+  
+    document.getElementById('reset-zoom-btn').addEventListener('click', () => {
+      currentZoom = 1;
+      applyTransform();
+    });
+  
+    document.getElementById('rotate-left-btn').addEventListener('click', () => {
+      rotation -= 90;
+      applyTransform();
+    });
+  
+    document.getElementById('rotate-right-btn').addEventListener('click', () => {
+      rotation += 90;
+      applyTransform();
+    });
+  
+// Aprobación de archivos
+// Aprobación de archivos
+document.getElementById('approve-btn').addEventListener('click', async () => {
+  if (currentFileId) {
+    // Obtener la colección seleccionada
+    const selectedCategory = document.querySelector('input[name="databaseType"]:checked');
+    if (!selectedCategory) {
+      alert('Por favor, selecciona una categoría para mover el archivo.');
+      return;
+    }
+
+    const targetCollection = selectedCategory.value; // Colección seleccionada
+    const docRef = doc(db, 'pendingUploads', currentFileId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+
+      // Mover archivo a la colección seleccionada
+      await setDoc(doc(db, targetCollection, currentFileId), {
+        ...data,
+        approved: true,
+        approvedAt: new Date(),
+      });
+
+      // Eliminar el archivo de la colección de pendientes
+      await deleteDoc(docRef);
+
+      alert(`Archivo aprobado y movido a la colección ${targetCollection}.`);
+      loadPendingUploads();
+      document.getElementById('preview-section').style.display = 'none';
+    } else {
+      alert('No se encontró el archivo en la base de datos.');
+    }
+  } else {
+    alert('No se ha seleccionado ningún archivo para aprobar.');
+  }
+});
+
+
+    // Carga perfil del curador
+    async function loadCuratorProfile(userId) {
+      const curatorRef = doc(db, 'users', userId);
+      const docSnap = await getDoc(curatorRef);
+  
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        document.getElementById("curator-name").textContent = data.name || "No disponible";
+        document.getElementById("curator-email").textContent = data.email || "No disponible";
+        document.getElementById("curator-registered").textContent = data.registered || "Desconocida";
+        document.getElementById("curator-tasks").textContent = data.tasksCompleted || "0";
+        document.getElementById("curator-reviews").textContent = data.reviews || "0";
+        document.getElementById("curator-approvals").textContent = data.approvals || "0";
+      }
+    }
+  
+    // Verificar sesión del curador
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loadPendingUploads();
+        loadCuratorProfile(user.uid);
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+  
+    // Cerrar sesión
+    function logout() {
+      auth.signOut().then(() => {
+        window.location.href = "login.html";
+      });
+    }
+  </script>
+  
+  
+</body>
+</html>
