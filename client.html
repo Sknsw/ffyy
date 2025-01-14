@@ -3,28 +3,278 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Clientes</title>
+  <title>Panel de Cliente Mejorado</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    header {
+      background-color: #6200ea;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    nav ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    nav ul li button {
+      background-color: #3700b3;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    nav ul li button:hover {
+      background-color: #6200ea;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin: 20px;
+    }
+    .gallery-item {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .gallery-item img {
+      max-width: 100%;
+      border-radius: 8px;
+    }
+    footer {
+      background-color: #3700b3;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      position: fixed;
+      width: 100%;
+      bottom: 0;
+    }
+  </style>
 </head>
 <body>
-  <h1>Bienvenido al Panel de Clientes</h1>
+  <header>
+    <h1>Panel de Cliente Mejorado</h1>
+    <nav>
+      <ul>
+        <li><button onclick="showSection('imagenes')">Imágenes</button></li>
+        <li><button onclick="showSection('videos')">Videos</button></li>
+        <li><button onclick="showSection('vectores')">Vectores</button></li>
+        <li><button onclick="showSection('ilustraciones')">Ilustraciones</button></li>
+        <li><button onclick="showCart()">Carrito</button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section id="imagenes" class="content-section">
+      <h2>Imágenes</h2>
+      <div class="gallery" id="imagenes-gallery"></div>
+    </section>
+    <section id="videos" class="content-section" style="display: none;">
+      <h2>Videos</h2>
+      <div class="gallery" id="videos-gallery"></div>
+    </section>
+    <section id="vectores" class="content-section" style="display: none;">
+      <h2>Vectores</h2>
+      <div class="gallery" id="vectores-gallery"></div>
+    </section>
+    <section id="ilustraciones" class="content-section" style="display: none;">
+      <h2>Ilustraciones</h2>
+      <div class="gallery" id="ilustraciones-gallery"></div>
+    </section>
+    <section id="carrito" class="content-section" style="display: none;">
+      <h2>Carrito</h2>
+      <ul id="cart-items"></ul>
+      <button onclick="checkout()" class="btn btn-success mt-3">Finalizar Compra</button>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2025 Panel de Cliente. Todos los derechos reservados.
+  </footer>
 
   <script type="module">
-    import { auth, db } from "scripts/firebase-config.js";
-    import { getDoc, doc } from "firebase/firestore";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+  
+    // Configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6QY7k3j0PRoWMxSNVk-2nI7sTqReGvlc",
+      authDomain: "scortsprincess.firebaseapp.com",
+      projectId: "scortsprincess",
+      storageBucket: "scortsprincess.appspot.com",
+      messagingSenderId: "599517218900",
+      appId: "1:599517218900:web:c51b2ec00e8c7b1fcd45c1",
+    };
+  
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+  
+    // Carrito de compras
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+  
+    // Mostrar secciones dinámicamente
+    window.showSection = (sectionId) => {
+      document.querySelectorAll(".content-section").forEach((section) => {
+        section.style.display = section.id === sectionId ? "block" : "none";
+      });
+    };
+  
+    // Agregar elementos al carrito
+    window.addToCart = (id, category, title, price, fileUrlWithoutWatermark) => {
+      cart.push({ id, category, title, price, fileUrlWithoutWatermark });
+      localStorage.setItem("cart", JSON.stringify(cart));
+      alert(`${title} agregado al carrito.`);
+    };
+  
+    // Mostrar el carrito
+    window.showCart = () => {
+      const cartItems = document.getElementById("cart-items");
+      cartItems.innerHTML = "";
+      cart.forEach((item, index) => {
+        const listItem = document.createElement("li");
+        listItem.innerHTML = `
+          ${item.title} - $${item.price}
+          <button onclick="removeFromCart(${index})" class="btn btn-danger btn-sm">Eliminar</button>
+        `;
+        cartItems.appendChild(listItem);
+      });
+      showSection("carrito");
+    };
+  
+    // Eliminar del carrito
+    window.removeFromCart = (index) => {
+      cart.splice(index, 1);
+      localStorage.setItem("cart", JSON.stringify(cart));
+      showCart();
+    };
+  
+    // Finalizar la compra
+    window.checkout = () => {
+      alert("Compra finalizada. Gracias por tu compra.");
+      cart.length = 0;
+      localStorage.setItem("cart", JSON.stringify(cart));
+      showCart();
+    };
+  
+    // Cargar contenido desde Firestore
+    function showImagePreview(fileUrl) {
+    const img = document.getElementById("preview-image");
+    if (fileUrl) {
+        img.src = fileUrlWithoutWatermark;
+        img.style.display = "block"; // Asegúrate de que se muestre
+    } else {
+        console.error("No se encontró la URL de la imagen.");
+    }
+};
 
-    // Verificar que el usuario sea cliente
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists() && userDoc.data().role !== "client") {
-          alert("Acceso denegado. Redirigiendo...");
-          window.location.href = "index.html";
+    const loadContent = async () => {
+      try {
+        const categories = ["imagenes", "videos", "vectores", "ilustraciones"];
+        for (const category of categories) {
+          const gallery = document.getElementById(`${category}-gallery`);
+          if (!gallery) {
+            console.warn(`No se encontró el elemento con ID: ${category}-gallery`);
+            continue;
+          }
+          gallery.innerHTML = "";
+  
+          const querySnapshot = await getDocs(collection(db, category));
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const fileUrlWithoutWatermark = data.fileUrlWithoutWatermark || "#";
+            const fileUrlWithWatermark = data.fileUrlWithWatermark || "#";
+            const item = document.createElement("div");
+            item.className = "gallery-item";
+            item.innerHTML = `
+              <img src="${fileUrlWithoutWatermark}" alt="${data.fileName}" />
+              <p>${data.fileName}</p>
+              <p>$${data.price || "0.00"}</p>
+              <button onclick="downloadWithWatermark('${fileUrlWithWatermark}')" class="btn btn-primary btn-sm">Descargar con marca</button>
+              <button onclick="addToCart('${doc.id}', '${category}', '${data.fileName}', '${data.price}', '${fileUrlWithoutWatermark}')" class="btn btn-success btn-sm">Comprar</button>
+            `;
+            gallery.appendChild(item);
+          });
         }
+      } catch (error) {
+        console.error("Error cargando contenido:", error);
+        alert("Hubo un problema cargando el contenido.");
+      }
+    };
+  
+    // Descargar archivo con marca de agua
+    window.downloadWithWatermark = (fileUrlWithWatermark) => {
+      const a = document.createElement("a");
+      a.href = fileUrlWithWatermark;
+      a.download = "archivo-con-marca-de-agua.jpg"; // Nombre genérico o ajustable
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      alert("Archivo descargado con marca de agua.");
+    };
+  
+    // Cargar contenido al autenticar al usuario
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log(`Usuario autenticado: ${user.email}`);
+        loadContent();
       } else {
         alert("No estás autenticado. Redirigiendo...");
-        window.location.href = "auth2.html";
+        window.location.href = "auth.html";
       }
     });
   </script>
+  
+  <script>
+    // Función para iniciar el proceso de pago
+    async function checkout() {
+      try {
+        const amount = 80; // Total de la compra (ejemplo)
+        const currency = 'USD'; // Moneda de la compra
+        
+        // Paso 1: Crear el pago a través del servidor (requiere un backend)
+        const response = await fetch('http://localhost:4242/create-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ amount, currency })
+        });
+
+        // Verifica si la respuesta es exitosa
+        if (!response.ok) {
+          throw new Error('Error al crear el pago.');
+        }
+
+        // Paso 2: Obtener la URL de pago desde la respuesta
+        const data = await response.json();
+        const checkoutUrl = data.checkout_url;  // URL que te devuelve el servidor
+        
+        // Paso 3: Redirigir al cliente al enlace de pago de SumUp
+        window.location.href = checkoutUrl;
+
+      } catch (error) {
+        console.error('Error en el proceso de pago:', error);
+        alert('Hubo un error al procesar el pago.');
+      }
+    }
+  </script>
+
 </body>
 </html>
